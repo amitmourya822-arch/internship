@@ -8,6 +8,7 @@ import Tasks from "./pages/Tasks";
 import Goals from "./pages/Goals";
 import Login from "./pages/Login";
 import Notifications from "./pages/Notifications";
+import Users from "./pages/Users";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -81,6 +82,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Notifications />
+            </ProtectedRoute>
+          }
+      />
+
+      <Route
+          path="/users"
+          element={
+            <ProtectedRoute role="ADMIN">
+              <Users />
             </ProtectedRoute>
           }
       />

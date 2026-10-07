@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Mentors() {
 
+    const writer = canWrite();
     const [mentors, setMentors] = useState([]);
     const [students, setStudents] = useState([]);
 
@@ -117,7 +118,8 @@ function Mentors() {
 
             <h1>Mentors Management</h1>
 
-            <form onSubmit={saveMentor}>
+            {writer && (
+                <form onSubmit={saveMentor}>
 
                 <input
                     type="text"
@@ -171,7 +173,8 @@ function Mentors() {
 
                 </button>
 
-            </form>
+                </form>
+            )}
 
             <hr />
 
@@ -241,23 +244,27 @@ function Mentors() {
 
                         )}
 
-                        <button
-                            onClick={() =>
-                                editMentor(mentor)
-                            }
-                        >
-                            Edit
-                        </button>
+                        {writer && (
+                            <>
+                                <button
+                                    onClick={() =>
+                                        editMentor(mentor)
+                                    }
+                                >
+                                    Edit
+                                </button>
 
-                        {" "}
+                                {" "}
 
-                        <button
-                            onClick={() =>
-                                deleteMentor(mentor.id)
-                            }
-                        >
-                            Delete
-                        </button>
+                                <button
+                                    onClick={() =>
+                                        deleteMentor(mentor.id)
+                                    }
+                                >
+                                    Delete
+                                </button>
+                            </>
+                        )}
 
                     </div>
                 );

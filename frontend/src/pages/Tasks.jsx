@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Tasks() {
 
+    const writer = canWrite();
     const [tasks, setTasks] = useState([]);
     const [editingId, setEditingId] = useState(null);
 
@@ -73,7 +74,8 @@ function Tasks() {
 
             <h1>Tasks</h1>
 
-            <form onSubmit={saveTask}>
+            {writer && (
+                <form onSubmit={saveTask}>
 
                 <input
                     type="text"
@@ -129,7 +131,8 @@ function Tasks() {
                     {editingId ? "Update Task" : "Add Task"}
                 </button>
 
-            </form>
+                </form>
+            )}
 
             <hr />
 
@@ -143,15 +146,19 @@ function Tasks() {
                     <p>{task.dueDate}</p>
                     <p>{task.status}</p>
 
-                    <button onClick={() => editTask(task)}>
-                        Edit
-                    </button>
+                    {writer && (
+                    <>
+                        <button onClick={() => editTask(task)}>
+                            Edit
+                        </button>
 
-                    {" "}
+                        {" "}
 
-                    <button onClick={() => deleteTask(task.id)}>
-                        Delete
-                    </button>
+                        <button onClick={() => deleteTask(task.id)}>
+                            Delete
+                        </button>
+                    </>
+                )}
 
                     <hr />
 

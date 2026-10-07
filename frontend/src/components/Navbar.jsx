@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { getRole, isAdmin } from "../services/api";
+
 function Navbar() {
 
     const logout = () => {
 
         localStorage.removeItem("token");
+        localStorage.removeItem("role");
 
         window.location.href = "/login";
     };
+
     const [notificationCount, setNotificationCount] = useState(0);
 
     useEffect(() => {
@@ -19,22 +22,24 @@ function Navbar() {
         try {
             const response = await api.get("/notifications");
 
-          setNotificationCount(
-              response.data.filter(
-                  n => !n.read
-              ).length
-          );
+            setNotificationCount(
+                response.data.filter(
+                    n => !n.read
+                ).length
+            );
         } catch (error) {
             console.error(error);
         }
     };
+
     return (
         <nav
             style={{
                 background: "#2563eb",
                 padding: "15px",
                 display: "flex",
-                gap: "15px"
+                gap: "15px",
+                alignItems: "center"
             }}
         >
             <Link to="/" style={{ color: "white" }}>
@@ -60,6 +65,13 @@ function Navbar() {
             <Link to="/goals" style={{ color: "white" }}>
                 Goals
             </Link>
+
+            {isAdmin() && (
+                <Link to="/users" style={{ color: "white" }}>
+                    Users
+                </Link>
+            )}
+
             <Link
                 to="/notifications"
                 style={{
@@ -70,10 +82,23 @@ function Navbar() {
                 🔔 Notifications ({notificationCount})
             </Link>
 
+            <span
+                style={{
+                    marginLeft: "auto",
+                    color: "white",
+                    background: "rgba(255,255,255,0.2)",
+                    padding: "5px 10px",
+                    borderRadius: "999px",
+                    fontSize: "12px",
+                    fontWeight: "bold"
+                }}
+            >
+                🔑 {getRole()}
+            </span>
+
             <button
                 onClick={logout}
                 style={{
-                    marginLeft: "auto",
                     cursor: "pointer"
                 }}
             >

@@ -70,4 +70,19 @@ export function isTokenValid(token) {
     }
 }
 
+export function getRole() {
+
+    return localStorage.getItem("role") || "";
+}
+
+export function canWrite() {
+
+    return ["ADMIN", "MENTOR"].includes(getRole());
+}
+
+export function isAdmin() {
+
+    return getRole() === "ADMIN";
+}
+
 export default api;

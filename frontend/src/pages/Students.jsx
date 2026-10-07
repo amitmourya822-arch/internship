@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Students() {
 
+    const writer = canWrite();
     const [students, setStudents] = useState([]);
     const [mentors, setMentors] = useState([]);
     const [search, setSearch] = useState("");
@@ -121,7 +122,8 @@ function Students() {
 
             <h1>Students Management</h1>
 
-            <form onSubmit={saveStudent}>
+            {writer && (
+                <form onSubmit={saveStudent}>
 
                 <input
                     type="text"
@@ -196,7 +198,8 @@ function Students() {
 
                 </button>
 
-            </form>
+                </form>
+            )}
 
             <hr />
 
@@ -257,25 +260,29 @@ function Students() {
                                 || "Not Assigned"}
                         </p>
 
-                        <button
-                            onClick={() =>
-                                editStudent(student)
-                            }
-                        >
-                            Edit
-                        </button>
+                        {writer && (
+                            <>
+                                <button
+                                    onClick={() =>
+                                        editStudent(student)
+                                    }
+                                >
+                                    Edit
+                                </button>
 
-                        {" "}
+                                {" "}
 
-                        <button
-                            onClick={() =>
-                                deleteStudent(
-                                    student.id
-                                )
-                            }
-                        >
-                            Delete
-                        </button>
+                                <button
+                                    onClick={() =>
+                                        deleteStudent(
+                                            student.id
+                                        )
+                                    }
+                                >
+                                    Delete
+                                </button>
+                            </>
+                        )}
 
                         <hr />
 

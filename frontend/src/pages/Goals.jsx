@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Goals() {
 
+    const writer = canWrite();
     const [goals, setGoals] = useState([]);
     const [editingId, setEditingId] = useState(null);
 
@@ -70,7 +71,8 @@ function Goals() {
 
             <h1>Goals</h1>
 
-            <form onSubmit={saveGoal}>
+            {writer && (
+                <form onSubmit={saveGoal}>
 
                 <input
                     type="text"
@@ -116,7 +118,8 @@ function Goals() {
                     {editingId ? "Update Goal" : "Add Goal"}
                 </button>
 
-            </form>
+                </form>
+            )}
 
             <hr />
 
@@ -129,15 +132,19 @@ function Goals() {
                     <p>{goal.targetDate}</p>
                     <p>{goal.status}</p>
 
-                    <button onClick={() => editGoal(goal)}>
-                        Edit
-                    </button>
+                    {writer && (
+                    <>
+                        <button onClick={() => editGoal(goal)}>
+                            Edit
+                        </button>
 
-                    {" "}
+                        {" "}
 
-                    <button onClick={() => deleteGoal(goal.id)}>
-                        Delete
-                    </button>
+                        <button onClick={() => deleteGoal(goal.id)}>
+                            Delete
+                        </button>
+                    </>
+                )}
 
                     <hr />
 

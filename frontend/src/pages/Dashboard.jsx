@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Dashboard() {
+    const writer = canWrite();
     const [studentCount, setStudentCount] = useState(0);
     const [mentorCount, setMentorCount] = useState(0);
     const [meetingCount, setMeetingCount] = useState(0);
@@ -137,6 +138,7 @@ function Dashboard() {
     );
        const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
     window.location.href = "/login";
 };
 
@@ -313,6 +315,7 @@ function Dashboard() {
 
                 <h2>Quick Actions</h2>
 
+                {writer && (
                 <div
                     style={{
                         display: "flex",
@@ -350,6 +353,7 @@ function Dashboard() {
                         <button>Add Goal</button>
                     </Link>
                 </div>
+                )}
 
                 <h2>Recent Students</h2>
 

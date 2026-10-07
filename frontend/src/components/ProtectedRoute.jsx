@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom";
-import { isTokenValid } from "../services/api";
+import { isTokenValid, getRole } from "../services/api";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, role }) {
 
     const token =
         localStorage.getItem("token");
@@ -12,6 +12,11 @@ function ProtectedRoute({ children }) {
         localStorage.removeItem("role");
 
         return <Navigate to="/login" />;
+    }
+
+    if (role && getRole() !== role) {
+
+        return <Navigate to="/" />;
     }
 
     return children;

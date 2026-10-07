@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { canWrite } from "../services/api";
 
 function Meetings() {
 
+    const writer = canWrite();
     const [meetings, setMeetings] = useState([]);
     const [students, setStudents] = useState([]);
 
@@ -136,7 +137,8 @@ function Meetings() {
 
             <h1>Meeting Scheduling</h1>
 
-            <form onSubmit={saveMeeting}>
+            {writer && (
+                <form onSubmit={saveMeeting}>
 
                 <select
                     value={formData.studentName}
@@ -217,7 +219,8 @@ function Meetings() {
 
                 </button>
 
-            </form>
+                </form>
+            )}
 
             <hr />
 
@@ -260,23 +263,27 @@ function Meetings() {
                         {meeting.status}
                     </p>
 
-                    <button
-                        onClick={() =>
-                            editMeeting(meeting)
-                        }
-                    >
-                        Edit
-                    </button>
+                    {writer && (
+                        <>
+                            <button
+                                onClick={() =>
+                                    editMeeting(meeting)
+                                }
+                            >
+                                Edit
+                            </button>
 
-                    {" "}
+                            {" "}
 
-                    <button
-                        onClick={() =>
-                            deleteMeeting(meeting.id)
-                        }
-                    >
-                        Delete
-                    </button>
+                            <button
+                                onClick={() =>
+                                    deleteMeeting(meeting.id)
+                                }
+                            >
+                                Delete
+                            </button>
+                        </>
+                    )}
 
                 </div>
 
