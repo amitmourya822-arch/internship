@@ -11,7 +11,8 @@ function Goals() {
         title: "",
         description: "",
         targetDate: "",
-        status: ""
+        status: "",
+        assignedTo: ""
     });
 
     useEffect(() => {
@@ -35,7 +36,8 @@ function Goals() {
             title: goal.title,
             description: goal.description,
             targetDate: goal.targetDate,
-            status: goal.status
+            status: goal.status,
+            assignedTo: goal.assignedTo || ""
         });
 
         setEditingId(goal.id);
@@ -54,7 +56,8 @@ function Goals() {
             title: "",
             description: "",
             targetDate: "",
-            status: ""
+            status: "",
+            assignedTo: ""
         });
 
         setEditingId(null);
@@ -114,6 +117,16 @@ function Goals() {
 
                 <br /><br />
 
+                <input
+                    type="text"
+                    name="assignedTo"
+                    placeholder="Assigned To"
+                    value={formData.assignedTo}
+                    onChange={handleChange}
+                />
+
+                <br /><br />
+
                 <button type="submit">
                     {editingId ? "Update Goal" : "Add Goal"}
                 </button>
@@ -131,6 +144,7 @@ function Goals() {
                     <p>{goal.description}</p>
                     <p>{goal.targetDate}</p>
                     <p>{goal.status}</p>
+                    <p>{goal.assignedTo}</p>
 
                     {writer && (
                     <>
