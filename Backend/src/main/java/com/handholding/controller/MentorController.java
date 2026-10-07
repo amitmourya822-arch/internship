@@ -1,7 +1,10 @@
 package com.handholding.controller;
 
+import com.handholding.entity.AuthUser;
 import com.handholding.entity.Mentor;
 import com.handholding.repository.MentorRepository;
+import com.handholding.security.SecurityUtils;
+import com.handholding.service.VisibilityService;
 
 import jakarta.validation.Valid;
 
@@ -17,22 +20,32 @@ import java.util.Map;
 public class MentorController {
 
     private final MentorRepository mentorRepository;
+    private final VisibilityService visibilityService;
 
-    public MentorController(MentorRepository mentorRepository) {
+    public MentorController(
+            MentorRepository mentorRepository,
+            VisibilityService visibilityService) {
         this.mentorRepository = mentorRepository;
+        this.visibilityService = visibilityService;
     }
 
     @GetMapping
     public List<Mentor> getAllMentors() {
-        return mentorRepository.findAll();
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        return visibilityService.visibleMentors(user);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getMentorById(@PathVariable Long id) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Mentor mentor = mentorRepository.findById(id).orElse(null);
 
-        if (mentor == null) {
+        if (mentor == null
+                || !visibilityService.canAccessMentor(user, mentor)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Mentor not found"));
         }
@@ -54,11 +67,18 @@ public class MentorController {
             @PathVariable Long id,
             @Valid @RequestBody Mentor updatedMentor) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Mentor mentor = mentorRepository.findById(id).orElse(null);
 
         if (mentor == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Mentor not found"));
+        }
+
+        if (!visibilityService.canAccessMentor(user, mentor)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to update this mentor"));
         }
 
         mentor.setName(updatedMentor.getName());
@@ -72,9 +92,18 @@ public class MentorController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMentor(@PathVariable Long id) {
 
-        if (!mentorRepository.existsById(id)) {
+        AuthUser user = SecurityUtils.currentUser();
+
+        Mentor mentor = mentorRepository.findById(id).orElse(null);
+
+        if (mentor == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Mentor not found"));
+        }
+
+        if (!visibilityService.canAccessMentor(user, mentor)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to delete this mentor"));
         }
 
         mentorRepository.deleteById(id);

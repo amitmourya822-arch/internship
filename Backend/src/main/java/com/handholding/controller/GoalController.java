@@ -1,7 +1,10 @@
 package com.handholding.controller;
 
+import com.handholding.entity.AuthUser;
 import com.handholding.entity.Goal;
 import com.handholding.repository.GoalRepository;
+import com.handholding.security.SecurityUtils;
+import com.handholding.service.VisibilityService;
 
 import jakarta.validation.Valid;
 
@@ -17,14 +20,38 @@ import java.util.Map;
 public class GoalController {
 
     private final GoalRepository goalRepository;
+    private final VisibilityService visibilityService;
 
-    public GoalController(GoalRepository goalRepository) {
+    public GoalController(
+            GoalRepository goalRepository,
+            VisibilityService visibilityService) {
         this.goalRepository = goalRepository;
+        this.visibilityService = visibilityService;
     }
 
     @GetMapping
     public List<Goal> getAllGoals() {
-        return goalRepository.findAll();
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        return visibilityService.visibleGoals(user);
+    }
+
+    // GET GOAL BY ID
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getGoalById(@PathVariable Long id) {
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        Goal goal = goalRepository.findById(id).orElse(null);
+
+        if (goal == null
+                || !visibilityService.canAccessGoal(user, goal)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Goal not found"));
+        }
+
+        return ResponseEntity.ok(goal);
     }
 
     @PostMapping
@@ -41,6 +68,8 @@ public class GoalController {
             @PathVariable Long id,
             @Valid @RequestBody Goal updatedGoal) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Goal goal = goalRepository.findById(id).orElse(null);
 
         if (goal == null) {
@@ -48,10 +77,16 @@ public class GoalController {
                     .body(Map.of("message", "Goal not found"));
         }
 
+        if (!visibilityService.canAccessGoal(user, goal)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to update this goal"));
+        }
+
         goal.setTitle(updatedGoal.getTitle());
         goal.setDescription(updatedGoal.getDescription());
         goal.setTargetDate(updatedGoal.getTargetDate());
         goal.setStatus(updatedGoal.getStatus());
+        goal.setAssignedTo(updatedGoal.getAssignedTo());
 
         return ResponseEntity.ok(goalRepository.save(goal));
     }
@@ -59,9 +94,18 @@ public class GoalController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteGoal(@PathVariable Long id) {
 
-        if (!goalRepository.existsById(id)) {
+        AuthUser user = SecurityUtils.currentUser();
+
+        Goal goal = goalRepository.findById(id).orElse(null);
+
+        if (goal == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Goal not found"));
+        }
+
+        if (!visibilityService.canAccessGoal(user, goal)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to delete this goal"));
         }
 
         goalRepository.deleteById(id);

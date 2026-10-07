@@ -2,7 +2,9 @@ package com.handholding.controller;
 
 import com.handholding.dto.UserRequest;
 import com.handholding.dto.UserResponse;
+import com.handholding.entity.AuthUser;
 import com.handholding.entity.User;
+import com.handholding.repository.AuthUserRepository;
 import com.handholding.repository.UserRepository;
 
 import jakarta.validation.Valid;
@@ -13,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -23,12 +26,15 @@ public class UserController {
             Set.of("ADMIN", "MENTOR", "MENTEE");
 
     private final UserRepository userRepository;
+    private final AuthUserRepository authUserRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserController(
             UserRepository userRepository,
+            AuthUserRepository authUserRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.authUserRepository = authUserRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -67,12 +73,17 @@ public class UserController {
 
         if (userRepository.findByEmail(request.getEmail()) != null) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(java.util.Map.of("message", "Email already exists"));
+                    .body(Map.of("message", "Email already exists"));
+        }
+
+        if (authUserRepository.findByUsername(request.getEmail()) != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Email already registered as a user"));
         }
 
         if (request.getPassword() == null || request.getPassword().isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(java.util.Map.of("message", "Password is required"));
+                    .body(Map.of("message", "Password is required"));
         }
 
         User user = new User(
@@ -83,6 +94,15 @@ public class UserController {
         );
 
         User saved = userRepository.save(user);
+
+        AuthUser auth = new AuthUser();
+        auth.setUsername(request.getEmail());
+        auth.setRole(role);
+        auth.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
+
+        authUserRepository.save(auth);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(toResponse(saved));
@@ -98,13 +118,27 @@ public class UserController {
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(java.util.Map.of("message", "User not found"));
+                    .body(Map.of("message", "User not found"));
         }
 
         String role = normalizeRole(request.getRole());
         if (role == null) {
             return ResponseEntity.badRequest()
-                    .body(java.util.Map.of("message", "Invalid role"));
+                    .body(Map.of("message", "Invalid role"));
+        }
+
+        AuthUser auth = authUserRepository.findByUsername(user.getEmail());
+
+        if (auth != null) {
+            auth.setRole(role);
+
+            if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                auth.setPassword(
+                        passwordEncoder.encode(request.getPassword())
+                );
+            }
+
+            authUserRepository.save(auth);
         }
 
         user.setName(request.getName());
@@ -126,15 +160,23 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
 
-        if (!userRepository.existsById(id)) {
+        User user = userRepository.findById(id).orElse(null);
+
+        if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(java.util.Map.of("message", "User not found"));
+                    .body(Map.of("message", "User not found"));
+        }
+
+        AuthUser auth = authUserRepository.findByUsername(user.getEmail());
+
+        if (auth != null) {
+            authUserRepository.delete(auth);
         }
 
         userRepository.deleteById(id);
 
         return ResponseEntity.ok(
-                java.util.Map.of("message", "User deleted successfully")
+                Map.of("message", "User deleted successfully")
         );
     }
 

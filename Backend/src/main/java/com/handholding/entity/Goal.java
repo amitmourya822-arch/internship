@@ -17,6 +17,7 @@ public class Goal {
     private String description;
     private String targetDate;
     private String status;
+    private String assignedTo;
 
     public Goal() {
     }
@@ -59,5 +60,13 @@ public class Goal {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getAssignedTo() {
+        return assignedTo;
+    }
+
+    public void setAssignedTo(String assignedTo) {
+        this.assignedTo = assignedTo;
     }
 }

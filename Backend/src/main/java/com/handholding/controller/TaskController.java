@@ -1,7 +1,10 @@
 package com.handholding.controller;
 
+import com.handholding.entity.AuthUser;
 import com.handholding.entity.Task;
 import com.handholding.repository.TaskRepository;
+import com.handholding.security.SecurityUtils;
+import com.handholding.service.VisibilityService;
 
 import jakarta.validation.Valid;
 
@@ -17,14 +20,38 @@ import java.util.Map;
 public class TaskController {
 
     private final TaskRepository taskRepository;
+    private final VisibilityService visibilityService;
 
-    public TaskController(TaskRepository taskRepository) {
+    public TaskController(
+            TaskRepository taskRepository,
+            VisibilityService visibilityService) {
         this.taskRepository = taskRepository;
+        this.visibilityService = visibilityService;
     }
 
     @GetMapping
     public List<Task> getAllTasks() {
-        return taskRepository.findAll();
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        return visibilityService.visibleTasks(user);
+    }
+
+    // GET TASK BY ID
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getTaskById(@PathVariable Long id) {
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        Task task = taskRepository.findById(id).orElse(null);
+
+        if (task == null
+                || !visibilityService.canAccessTask(user, task)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Task not found"));
+        }
+
+        return ResponseEntity.ok(task);
     }
 
     @PostMapping
@@ -41,11 +68,18 @@ public class TaskController {
             @PathVariable Long id,
             @Valid @RequestBody Task updatedTask) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Task task = taskRepository.findById(id).orElse(null);
 
         if (task == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Task not found"));
+        }
+
+        if (!visibilityService.canAccessTask(user, task)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to update this task"));
         }
 
         task.setTitle(updatedTask.getTitle());
@@ -60,9 +94,18 @@ public class TaskController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTask(@PathVariable Long id) {
 
-        if (!taskRepository.existsById(id)) {
+        AuthUser user = SecurityUtils.currentUser();
+
+        Task task = taskRepository.findById(id).orElse(null);
+
+        if (task == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Task not found"));
+        }
+
+        if (!visibilityService.canAccessTask(user, task)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to delete this task"));
         }
 
         taskRepository.deleteById(id);

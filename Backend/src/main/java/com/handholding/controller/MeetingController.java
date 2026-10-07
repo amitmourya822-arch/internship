@@ -1,12 +1,15 @@
 package com.handholding.controller;
 
+import com.handholding.entity.AuthUser;
 import com.handholding.entity.Meeting;
 import com.handholding.entity.Notification;
 import com.handholding.entity.Student;
 import com.handholding.repository.MeetingRepository;
 import com.handholding.repository.NotificationRepository;
 import com.handholding.repository.StudentRepository;
+import com.handholding.security.SecurityUtils;
 import com.handholding.service.EmailService;
+import com.handholding.service.VisibilityService;
 
 import jakarta.validation.Valid;
 
@@ -29,31 +32,40 @@ public class MeetingController {
     private final NotificationRepository notificationRepository;
     private final StudentRepository studentRepository;
     private final EmailService emailService;
+    private final VisibilityService visibilityService;
 
     public MeetingController(
             MeetingRepository meetingRepository,
             NotificationRepository notificationRepository,
             StudentRepository studentRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            VisibilityService visibilityService) {
         this.meetingRepository = meetingRepository;
         this.notificationRepository = notificationRepository;
         this.studentRepository = studentRepository;
         this.emailService = emailService;
+        this.visibilityService = visibilityService;
     }
 
     // GET ALL MEETINGS
     @GetMapping
     public List<Meeting> getAllMeetings() {
-        return meetingRepository.findAll();
+
+        AuthUser user = SecurityUtils.currentUser();
+
+        return visibilityService.visibleMeetings(user);
     }
 
     // GET MEETING BY ID
     @GetMapping("/{id}")
     public ResponseEntity<?> getMeetingById(@PathVariable Long id) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Meeting meeting = meetingRepository.findById(id).orElse(null);
 
-        if (meeting == null) {
+        if (meeting == null
+                || !visibilityService.canAccessMeeting(user, meeting)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Meeting not found"));
         }
@@ -63,16 +75,37 @@ public class MeetingController {
 
     // CREATE MEETING
     @PostMapping
-    public ResponseEntity<Meeting> createMeeting(
+    public ResponseEntity<?> createMeeting(
             @Valid @RequestBody Meeting meeting) {
+
+        AuthUser user = SecurityUtils.currentUser();
 
         String studentEmail = meeting.getStudentEmail();
 
         if (studentEmail == null || studentEmail.isBlank()) {
+
             Student student = studentRepository.findByName(
                     meeting.getStudentName()
             );
+
             if (student != null && student.getEmail() != null) {
+                studentEmail = student.getEmail();
+            }
+        }
+
+        if (visibilityService.isMentorScope(user)) {
+
+            Student student = findVisibleStudent(user, meeting);
+
+            if (student == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(
+                                "message",
+                                "Student is not assigned to you"
+                        ));
+            }
+
+            if (student.getEmail() != null) {
                 studentEmail = student.getEmail();
             }
         }
@@ -100,17 +133,46 @@ public class MeetingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedMeeting);
     }
 
+    private Student findVisibleStudent(AuthUser user, Meeting meeting) {
+
+        for (Student student : visibilityService.visibleStudents(user)) {
+
+            boolean nameMatch = meeting.getStudentName() != null
+                    && meeting.getStudentName().equalsIgnoreCase(
+                            student.getName()
+                    );
+
+            boolean emailMatch = meeting.getStudentEmail() != null
+                    && meeting.getStudentEmail().equalsIgnoreCase(
+                            student.getEmail()
+                    );
+
+            if (nameMatch || emailMatch) {
+                return student;
+            }
+        }
+
+        return null;
+    }
+
     // UPDATE MEETING
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMeeting(
             @PathVariable Long id,
             @Valid @RequestBody Meeting updatedMeeting) {
 
+        AuthUser user = SecurityUtils.currentUser();
+
         Meeting meeting = meetingRepository.findById(id).orElse(null);
 
         if (meeting == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Meeting not found"));
+        }
+
+        if (!visibilityService.canAccessMeeting(user, meeting)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to update this meeting"));
         }
 
         meeting.setStudentName(updatedMeeting.getStudentName());
@@ -130,9 +192,18 @@ public class MeetingController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMeeting(@PathVariable Long id) {
 
-        if (!meetingRepository.existsById(id)) {
+        AuthUser user = SecurityUtils.currentUser();
+
+        Meeting meeting = meetingRepository.findById(id).orElse(null);
+
+        if (meeting == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Meeting not found"));
+        }
+
+        if (!visibilityService.canAccessMeeting(user, meeting)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Not allowed to delete this meeting"));
         }
 
         meetingRepository.deleteById(id);
