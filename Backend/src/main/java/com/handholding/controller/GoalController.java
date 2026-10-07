@@ -2,18 +2,25 @@ package com.handholding.controller;
 
 import com.handholding.entity.Goal;
 import com.handholding.repository.GoalRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/goals")
-@CrossOrigin(origins = "*")
 public class GoalController {
 
-    @Autowired
-    private GoalRepository goalRepository;
+    private final GoalRepository goalRepository;
+
+    public GoalController(GoalRepository goalRepository) {
+        this.goalRepository = goalRepository;
+    }
 
     @GetMapping
     public List<Goal> getAllGoals() {
@@ -21,20 +28,24 @@ public class GoalController {
     }
 
     @PostMapping
-    public Goal createGoal(@RequestBody Goal goal) {
-        return goalRepository.save(goal);
+    public ResponseEntity<Goal> createGoal(
+            @Valid @RequestBody Goal goal) {
+
+        Goal saved = goalRepository.save(goal);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
-    public Goal updateGoal(
+    public ResponseEntity<?> updateGoal(
             @PathVariable Long id,
-            @RequestBody Goal updatedGoal) {
+            @Valid @RequestBody Goal updatedGoal) {
 
-        Goal goal =
-                goalRepository.findById(id).orElse(null);
+        Goal goal = goalRepository.findById(id).orElse(null);
 
         if (goal == null) {
-            return null;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Goal not found"));
         }
 
         goal.setTitle(updatedGoal.getTitle());
@@ -42,18 +53,21 @@ public class GoalController {
         goal.setTargetDate(updatedGoal.getTargetDate());
         goal.setStatus(updatedGoal.getStatus());
 
-        return goalRepository.save(goal);
+        return ResponseEntity.ok(goalRepository.save(goal));
     }
 
     @DeleteMapping("/{id}")
-    public String deleteGoal(@PathVariable Long id) {
+    public ResponseEntity<?> deleteGoal(@PathVariable Long id) {
 
         if (!goalRepository.existsById(id)) {
-            return "Goal not found";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Goal not found"));
         }
 
         goalRepository.deleteById(id);
 
-        return "Goal deleted successfully";
+        return ResponseEntity.ok(
+                Map.of("message", "Goal deleted successfully")
+        );
     }
 }

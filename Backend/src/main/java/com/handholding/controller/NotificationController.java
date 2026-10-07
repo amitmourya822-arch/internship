@@ -2,18 +2,24 @@ package com.handholding.controller;
 
 import com.handholding.entity.Notification;
 import com.handholding.repository.NotificationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "*")
 public class NotificationController {
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private final NotificationRepository notificationRepository;
+
+    public NotificationController(
+            NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
+    }
 
     @GetMapping
     public List<Notification> getAllNotifications() {
@@ -21,38 +27,47 @@ public class NotificationController {
     }
 
     @GetMapping("/{id}")
-    public Notification getNotificationById(@PathVariable Long id) {
-        return notificationRepository.findById(id).orElse(null);
-    }
-
-
-    @PutMapping("/read/{id}")
-    public Notification markAsRead(@PathVariable Long id) {
+    public ResponseEntity<?> getNotificationById(@PathVariable Long id) {
 
         Notification notification =
-                notificationRepository.findById(id)
-                        .orElse(null);
+                notificationRepository.findById(id).orElse(null);
 
         if (notification == null) {
-            return null;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Notification not found"));
+        }
+
+        return ResponseEntity.ok(notification);
+    }
+
+    @PutMapping("/read/{id}")
+    public ResponseEntity<?> markAsRead(@PathVariable Long id) {
+
+        Notification notification =
+                notificationRepository.findById(id).orElse(null);
+
+        if (notification == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Notification not found"));
         }
 
         notification.setRead(true);
 
-        return notificationRepository.save(notification);
+        return ResponseEntity.ok(notificationRepository.save(notification));
     }
 
     @DeleteMapping("/{id}")
-    public String deleteNotification(
-            @PathVariable Long id) {
+    public ResponseEntity<?> deleteNotification(@PathVariable Long id) {
 
         if (!notificationRepository.existsById(id)) {
-            return "Notification not found";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Notification not found"));
         }
 
         notificationRepository.deleteById(id);
 
-        return "Notification deleted successfully";
+        return ResponseEntity.ok(
+                Map.of("message", "Notification deleted successfully")
+        );
     }
 }
-

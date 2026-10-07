@@ -3,18 +3,24 @@ package com.handholding.controller;
 import com.handholding.entity.Student;
 import com.handholding.repository.StudentRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = "http://localhost:5173")
 public class StudentController {
 
-    @Autowired
-    private StudentRepository studentRepository;
+    private final StudentRepository studentRepository;
+
+    public StudentController(StudentRepository studentRepository) {
+        this.studentRepository = studentRepository;
+    }
 
     // GET ALL STUDENTS
     @GetMapping
@@ -24,27 +30,39 @@ public class StudentController {
 
     // GET STUDENT BY ID
     @GetMapping("/{id}")
-    public Student getStudentById(@PathVariable Long id) {
-        return studentRepository.findById(id).orElse(null);
+    public ResponseEntity<?> getStudentById(@PathVariable Long id) {
+
+        Student student = studentRepository.findById(id).orElse(null);
+
+        if (student == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Student not found"));
+        }
+
+        return ResponseEntity.ok(student);
     }
 
     // CREATE STUDENT
     @PostMapping
-    public Student createStudent(@RequestBody Student student) {
-        return studentRepository.save(student);
+    public ResponseEntity<Student> createStudent(
+            @Valid @RequestBody Student student) {
+
+        Student saved = studentRepository.save(student);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     // UPDATE STUDENT
     @PutMapping("/{id}")
-    public Student updateStudent(
+    public ResponseEntity<?> updateStudent(
             @PathVariable Long id,
-            @RequestBody Student updatedStudent) {
+            @Valid @RequestBody Student updatedStudent) {
 
-        Student student =
-                studentRepository.findById(id).orElse(null);
+        Student student = studentRepository.findById(id).orElse(null);
 
         if (student == null) {
-            return null;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Student not found"));
         }
 
         student.setName(updatedStudent.getName());
@@ -55,35 +73,40 @@ public class StudentController {
                 updatedStudent.getAssignedMentor()
         );
 
-        return studentRepository.save(student);
+        return ResponseEntity.ok(studentRepository.save(student));
     }
 
     // ASSIGN MENTOR TO STUDENT
     @PutMapping("/{id}/assign-mentor")
-    public Student assignMentor(
+    public ResponseEntity<?> assignMentor(
             @PathVariable Long id,
             @RequestParam String mentorName) {
 
-        Student student =
-                studentRepository.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException("Student Not Found"));
+        Student student = studentRepository.findById(id).orElse(null);
+
+        if (student == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Student not found"));
+        }
 
         student.setAssignedMentor(mentorName);
 
-        return studentRepository.save(student);
+        return ResponseEntity.ok(studentRepository.save(student));
     }
 
     // DELETE STUDENT
     @DeleteMapping("/{id}")
-    public String deleteStudent(@PathVariable Long id) {
+    public ResponseEntity<?> deleteStudent(@PathVariable Long id) {
 
         if (!studentRepository.existsById(id)) {
-            return "Student not found";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Student not found"));
         }
 
         studentRepository.deleteById(id);
 
-        return "Student deleted successfully";
+        return ResponseEntity.ok(
+                Map.of("message", "Student deleted successfully")
+        );
     }
 }

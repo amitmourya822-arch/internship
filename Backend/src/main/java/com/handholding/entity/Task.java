@@ -1,6 +1,7 @@
 package com.handholding.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "tasks")
@@ -10,9 +11,14 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Title is required")
     private String title;
+
     private String description;
+
+    @NotBlank(message = "Assigned to is required")
     private String assignedTo;
+
     private String dueDate;
     private String status;
 

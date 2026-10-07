@@ -1,78 +1,95 @@
 package com.handholding.controller;
 
 import com.handholding.dto.AuthRequest;
+import com.handholding.dto.LoginResponse;
+import com.handholding.dto.RegisterRequest;
 import com.handholding.entity.AuthUser;
 import com.handholding.repository.AuthUserRepository;
 import com.handholding.security.JwtUtil;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
-    @Autowired
-    private AuthUserRepository repository;
+    private final AuthUserRepository repository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public AuthController(
+            AuthUserRepository repository,
+            PasswordEncoder passwordEncoder) {
+        this.repository = repository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @PostMapping("/register")
-    public String register(@RequestBody AuthUser user) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
 
-        try {
-
-            if (repository.findByUsername(user.getUsername()) != null) {
-                return "Username already exists";
-            }
-
-            if (user.getRole() == null || user.getRole().isEmpty()) {
-                user.setRole("USER");
-            }
-
-            user.setPassword(
-                    passwordEncoder.encode(user.getPassword())
-            );
-
-            repository.save(user);
-
-            return "User Registered Successfully";
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-            return e.getMessage();
+        if (repository.findByUsername(request.getUsername()) != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "Username already exists"));
         }
+
+        AuthUser user = new AuthUser();
+        user.setUsername(request.getUsername());
+
+        // Self-registration is always a mentee; roles are provisioned server-side.
+        user.setRole("MENTEE");
+        user.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
+
+        repository.save(user);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("message", "User registered successfully"));
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody AuthRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest request) {
 
-        try {
+        AuthUser user = repository.findByUsername(request.getUsername());
 
-            AuthUser user =
-                    repository.findByUsername(request.getUsername());
+        if (user == null
+                || !passwordEncoder.matches(
+                        request.getPassword(),
+                        user.getPassword())) {
 
-            if (user == null) {
-                return "User not found";
-            }
-
-            if (!passwordEncoder.matches(
-                    request.getPassword(),
-                    user.getPassword())) {
-
-                return "Invalid password";
-            }
-
-            return JwtUtil.generateToken(user.getUsername());
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-            return e.getMessage();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid username or password"));
         }
+
+        String token = JwtUtil.generateToken(
+                user.getUsername(),
+                user.getRole()
+        );
+
+        return ResponseEntity.ok(
+                new LoginResponse(
+                        token,
+                        user.getUsername(),
+                        user.getRole()
+                )
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(Authentication authentication) {
+
+        AuthUser user = (AuthUser) authentication.getPrincipal();
+
+        return ResponseEntity.ok(Map.of(
+                "username", user.getUsername(),
+                "role", user.getRole()
+        ));
     }
 }

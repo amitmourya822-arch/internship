@@ -1,5 +1,6 @@
 package com.handholding.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -11,7 +12,10 @@ public class AuthUser {
     private Long id;
 
     private String username;
+
+    @JsonIgnore
     private String password;
+
     private String role;
 
     public AuthUser() {}

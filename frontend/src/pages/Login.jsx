@@ -5,10 +5,13 @@ function Login() {
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
 
     const handleLogin = async (e) => {
 
         e.preventDefault();
+
+        setError("");
 
         try {
 
@@ -22,18 +25,24 @@ function Login() {
 
             localStorage.setItem(
                 "token",
-                response.data
+                response.data.token
             );
 
-            alert("Login Success");
+            localStorage.setItem(
+                "role",
+                response.data.role || ""
+            );
 
             window.location.href = "/";
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error(error);
+            console.error(err);
 
-            alert("Login Failed");
+            setError(
+                err.response?.data?.message
+                || "Login failed. Try again."
+            );
         }
     };
 
@@ -41,6 +50,12 @@ function Login() {
         <div style={{ padding: "50px" }}>
 
             <h1>Login</h1>
+
+            {error && (
+                <p style={{ color: "red" }}>
+                    {error}
+                </p>
+            )}
 
             <form onSubmit={handleLogin}>
 

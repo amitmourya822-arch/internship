@@ -5,11 +5,15 @@ function Register() {
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [role, setRole] = useState("USER");
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(false);
 
     const handleRegister = async (e) => {
 
         e.preventDefault();
+
+        setMessage("");
+        setIsError(false);
 
         try {
 
@@ -17,20 +21,26 @@ function Register() {
                 "/auth/register",
                 {
                     username,
-                    password,
-                    role
+                    password
                 }
             );
 
-            alert(response.data);
+            setMessage(response.data.message);
+            setIsError(false);
 
-            window.location.href = "/login";
+            setTimeout(() => {
+                window.location.href = "/login";
+            }, 1200);
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error(error);
+            console.error(err);
 
-            alert("Registration Failed");
+            setMessage(
+                err.response?.data?.message
+                || "Registration failed. Try again."
+            );
+            setIsError(true);
         }
     };
 
@@ -38,6 +48,16 @@ function Register() {
         <div style={{ padding: "50px" }}>
 
             <h1>Register</h1>
+
+            {message && (
+                <p
+                    style={{
+                        color: isError ? "red" : "green"
+                    }}
+                >
+                    {message}
+                </p>
+            )}
 
             <form onSubmit={handleRegister}>
 
@@ -54,29 +74,12 @@ function Register() {
 
                 <input
                     type="password"
-                    placeholder="Password"
+                    placeholder="Password (min 8 characters)"
                     value={password}
                     onChange={(e) =>
                         setPassword(e.target.value)
                     }
                 />
-
-                <br /><br />
-
-                <select
-                    value={role}
-                    onChange={(e) =>
-                        setRole(e.target.value)
-                    }
-                >
-                    <option value="USER">
-                        USER
-                    </option>
-
-                    <option value="ADMIN">
-                        ADMIN
-                    </option>
-                </select>
 
                 <br /><br />
 

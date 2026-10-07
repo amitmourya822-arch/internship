@@ -1,6 +1,8 @@
 package com.handholding.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "meetings")
@@ -10,14 +12,18 @@ public class Meeting {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Student name is required")
     private String studentName;
 
+    @Email(message = "Invalid email format")
     private String studentEmail;
 
     private String mentorName;
 
+    @NotBlank(message = "Meeting date is required")
     private String meetingDate;
 
+    @NotBlank(message = "Meeting time is required")
     private String meetingTime;
 
     private String status;

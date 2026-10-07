@@ -9,21 +9,31 @@ import java.util.Date;
 
 public class JwtUtil {
 
-    private static final String SECRET =
-            System.getenv().getOrDefault(
-                    "JWT_SECRET",
-                    "dev-only-insecure-jwt-secret-change-me!!");
+    private static final long EXPIRATION_MS = 86400000;
 
-    private static final SecretKey KEY =
-            Keys.hmacShaKeyFor(SECRET.getBytes());
+    private static final SecretKey KEY = loadKey();
 
-    public static String generateToken(String username) {
+    private static SecretKey loadKey() {
+
+        String secret = System.getenv("JWT_SECRET");
+
+        if (secret == null || secret.getBytes().length < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET environment variable is not set or is shorter than 32 characters. "
+                            + "Set JWT_SECRET before running the application.");
+        }
+
+        return Keys.hmacShaKeyFor(secret.getBytes());
+    }
+
+    public static String generateToken(String username, String role) {
 
         return Jwts.builder()
                 .subject(username)
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(
-                        new Date(System.currentTimeMillis() + 86400000)
+                        new Date(System.currentTimeMillis() + EXPIRATION_MS)
                 )
                 .signWith(KEY)
                 .compact();
@@ -31,23 +41,19 @@ public class JwtUtil {
 
     public static String extractUsername(String token) {
 
-        Claims claims = Jwts.parser()
-                .verifyWith(KEY)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        return parseClaims(token).getSubject();
+    }
 
-        return claims.getSubject();
+    public static String extractRole(String token) {
+
+        return parseClaims(token).get("role", String.class);
     }
 
     public static boolean isTokenValid(String token) {
 
         try {
 
-            Jwts.parser()
-                    .verifyWith(KEY)
-                    .build()
-                    .parseSignedClaims(token);
+            parseClaims(token);
 
             return true;
 
@@ -55,5 +61,14 @@ public class JwtUtil {
 
             return false;
         }
+    }
+
+    private static Claims parseClaims(String token) {
+
+        return Jwts.parser()
+                .verifyWith(KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

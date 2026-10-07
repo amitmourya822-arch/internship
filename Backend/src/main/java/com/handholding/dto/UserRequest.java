@@ -1,41 +1,24 @@
-package com.handholding.entity;
+package com.handholding.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-@Entity
-@Table(name = "users")
-public class User {
+public class UserRequest {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+    @NotBlank(message = "Name is required")
     private String name;
 
-    @Column(unique = true)
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
 
-    @JsonIgnore
+    @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
     private String role;
 
-    public User() {
-    }
-
-    public User(String name,
-                String email,
-                String password,
-                String role) {
-        this.name = name;
-        this.email = email;
-        this.password = password;
-        this.role = role;
-    }
-
-    public Long getId() {
-        return id;
+    public UserRequest() {
     }
 
     public String getName() {

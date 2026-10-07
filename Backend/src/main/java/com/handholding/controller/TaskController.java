@@ -2,18 +2,25 @@ package com.handholding.controller;
 
 import com.handholding.entity.Task;
 import com.handholding.repository.TaskRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "*")
 public class TaskController {
 
-    @Autowired
-    private TaskRepository taskRepository;
+    private final TaskRepository taskRepository;
+
+    public TaskController(TaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
 
     @GetMapping
     public List<Task> getAllTasks() {
@@ -21,19 +28,24 @@ public class TaskController {
     }
 
     @PostMapping
-    public Task createTask(@RequestBody Task task) {
-        return taskRepository.save(task);
+    public ResponseEntity<Task> createTask(
+            @Valid @RequestBody Task task) {
+
+        Task saved = taskRepository.save(task);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PutMapping("/{id}")
-    public Task updateTask(
+    public ResponseEntity<?> updateTask(
             @PathVariable Long id,
-            @RequestBody Task updatedTask) {
+            @Valid @RequestBody Task updatedTask) {
 
         Task task = taskRepository.findById(id).orElse(null);
 
         if (task == null) {
-            return null;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Task not found"));
         }
 
         task.setTitle(updatedTask.getTitle());
@@ -42,18 +54,21 @@ public class TaskController {
         task.setDueDate(updatedTask.getDueDate());
         task.setStatus(updatedTask.getStatus());
 
-        return taskRepository.save(task);
+        return ResponseEntity.ok(taskRepository.save(task));
     }
 
     @DeleteMapping("/{id}")
-    public String deleteTask(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTask(@PathVariable Long id) {
 
         if (!taskRepository.existsById(id)) {
-            return "Task not found";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Task not found"));
         }
 
         taskRepository.deleteById(id);
 
-        return "Task deleted successfully";
+        return ResponseEntity.ok(
+                Map.of("message", "Task deleted successfully")
+        );
     }
 }
